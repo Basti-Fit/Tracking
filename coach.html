@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0A0D13">
+<meta name="robots" content="noindex">
+<title>Formbuch Coach</title>
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Barlow:wght@400;500;600;700&display=swap">
+<style>
+/* Coach desk: same night-gym palette as the client app; list of clients, then one client's week in detail */
+:root {
+  color-scheme: dark;
+  --bg: #0A0D13; --surface: #131823; --surface2: #1A2130; --line: #262F40; --ink: #EEF1F6; --muted: #8E98AB;
+  --red: #E8383D; --blue: #3D7BFF; --yellow: #F6C41A; --green: #2DBB74;
+  --font-display: "Big Shoulders Display", "Barlow Condensed", "Arial Narrow", sans-serif;
+  --font-body: "Barlow", "Segoe UI", system-ui, -apple-system, sans-serif;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.45; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 18px max(16px, env(safe-area-inset-right, 0px)) 60px max(16px, env(safe-area-inset-left, 0px)); display: grid; gap: 16px; }
+header.top { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.brand { display: flex; align-items: center; gap: 8px; font-family: var(--font-display); font-weight: 900; font-size: 26px; text-transform: uppercase; letter-spacing: .03em; margin-right: auto; }
+.brand i { display: block; width: 5px; border-radius: 2px; }
+.brand small { font-family: var(--font-body); font-size: 12px; font-weight: 700; letter-spacing: .1em; color: var(--yellow); border: 1px solid rgba(246,196,26,.4); border-radius: 6px; padding: 2px 6px; }
+h2 { font-family: var(--font-display); font-weight: 900; font-size: 40px; line-height: .95; margin: 0; text-transform: uppercase; }
+h3 { font-family: var(--font-display); font-weight: 800; font-size: 21px; margin: 0; text-transform: uppercase; letter-spacing: .03em; }
+.label { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700; }
+.sub { color: var(--muted); margin: 0; font-size: 15px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.spread { justify-content: space-between; }
+.btn { border: 1px solid var(--line); background: var(--surface2); border-radius: 10px; padding: 10px 15px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+.btn.blue { background: var(--blue); border-color: var(--blue); color: #fff; }
+.btn.red { background: var(--red); border-color: var(--red); color: #fff; }
+.btn.small { padding: 6px 10px; font-size: 14px; }
+.btn.ghost { background: none; }
+select { border: 1px solid var(--line); background: var(--bg); border-radius: 10px; padding: 9px 10px; }
+.clients { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.client { text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 8px; }
+.client:hover { border-color: var(--blue); }
+.client .name { font-family: var(--font-display); font-weight: 900; font-size: 26px; text-transform: uppercase; line-height: 1; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: var(--bg); color: var(--muted); }
+.chip.warn { color: var(--yellow); background: rgba(246,196,26,.12); }
+.chip.good { color: var(--green); background: rgba(45,187,116,.14); }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.stats div { background: var(--bg); border-radius: 10px; padding: 10px 6px; text-align: center; }
+.stats b { display: block; font-family: var(--font-display); font-weight: 900; font-size: 26px; line-height: 1.05; }
+.stats span { font-size: 11px; color: var(--muted); }
+.stats .good b { color: var(--green); } .stats .warn b { color: var(--yellow); }
+.poses { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+@media (max-width: 600px) { .poses { grid-template-columns: 1fr 1fr; } }
+figure { margin: 0; display: grid; gap: 4px; }
+figure .ph { aspect-ratio: 3 / 4; max-width: 100%; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: grid; place-items: center; color: var(--muted); font-size: 13px; }
+figure img { width: 100%; height: 100%; object-fit: cover; display: block; }
+figcaption { font-size: 12px; color: var(--muted); text-align: center; }
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.answers { display: grid; gap: 8px; }
+.answers div { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; }
+.dots { display: flex; gap: 4px; }
+.dots i { width: 14px; height: 14px; border-radius: 4px; background: var(--surface2); }
+.dots i.on { background: var(--blue); }
+.note { background: var(--bg); border-left: 3px solid var(--yellow); border-radius: 6px; padding: 10px 12px; white-space: pre-wrap; }
+.gem { width: 30px; height: 34px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); display: grid; place-items: center; font-family: var(--font-display); font-weight: 900; font-size: 12px; color: #0A0D13; flex: none; }
+.list > div { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding-block: 7px; border-bottom: 1px solid var(--line); }
+.list > div:last-child { border-bottom: 0; }
+.wo { display: grid; gap: 4px; padding-block: 8px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.wo:last-child { border-bottom: 0; }
+.wo b { font-size: 15px; }
+.chart { width: 100%; height: auto; display: block; }
+.chart text { fill: var(--muted); font-size: 12px; font-family: var(--font-body); }
+.chart .grid { stroke: var(--line); }
+.empty { color: var(--muted); padding: 30px 0; text-align: center; }
+.drop { border: 2px dashed var(--line); border-radius: 14px; padding: 28px 16px; text-align: center; display: grid; gap: 8px; justify-items: center; }
+.drop.over { border-color: var(--blue); background: rgba(61,123,255,.08); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); background: var(--ink); color: var(--bg); padding: 10px 15px; border-radius: 12px; font-weight: 600; z-index: 30; max-width: calc(100% - 32px); }
+.ed { display: grid; gap: 12px; }
+.ed .day { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 8px; background: var(--bg); }
+.ed .exr { display: grid; grid-template-columns: minmax(0, 1fr) 70px 86px 34px; gap: 6px; align-items: center; }
+.ed input, .ed textarea, .ed select { width: 100%; min-width: 0; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 8px; padding: 8px 9px; font: inherit; font-size: 14px; }
+.ed textarea { min-height: 80px; resize: vertical; }
+.ed .tg { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+.ed .tg label, .ed .lbl { display: grid; gap: 4px; font-size: 12px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+.ed .x { background: none; border: 1px solid var(--line); border-radius: 8px; height: 36px; color: var(--muted); }
+details.edp > summary { cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; }
+details.edp > summary::-webkit-details-marker { display: none; }
+details.edp > summary::after { content: "+"; font-size: 24px; color: var(--muted); }
+details.edp[open] > summary::after { content: "–"; }
+@media (max-width: 520px) { .ed .exr { grid-template-columns: minmax(0, 1fr) 58px 34px; } .ed .exr .rr { grid-column: 1 / 3; } }
+.confirm { background: rgba(232,56,61,.12); border: 1px solid rgba(232,56,61,.4); border-radius: 10px; padding: 10px 12px; display: grid; gap: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><i style="height:22px;background:var(--red)"></i><i style="height:18px;background:var(--blue)"></i><i style="height:14px;background:var(--yellow)"></i>Formbuch <small>Coach</small></div>
+    <label class="btn blue" for="files">Check-ins importieren</label>
+    <input type="file" id="files" accept="application/json,.json" multiple hidden>
+  </header>
+  <main id="app"><p class="empty">Lädt …</p></main>
+  <p class="sub" style="font-size:13px;text-align:center">Alle Daten bleiben nur in diesem Browser auf diesem Gerät. Es wird nichts hochgeladen.</p>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function () {
+"use strict";
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = (n, d = 0) => n == null || isNaN(n) ? "–" : Number(n).toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
+const MON = ["Jan", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt", "Nov", "Dez"];
+const parseIso = (s) => { const [y, m, d] = s.split("-").map(Number); return new Date(y, m - 1, d); };
+const shortDate = (s) => { const d = parseIso(s); return d.getDate() + ". " + MON[d.getMonth()]; };
+const weekLabel = (wk) => "KW " + Number(wk.split("-W")[1]) + " " + wk.split("-")[0];
+const GOALN = { cut: "Cut", lean: "Lean Bulk", bulk: "Bulk" };
+const POSES = [{ id: "front", n: "Vorne" }, { id: "side", n: "Seite" }, { id: "back", n: "Hinten" }, { id: "dbl", n: "Doppelbizeps" }];
+const QS = [["plan", "Plan eingehalten"], ["energy", "Energie"], ["hunger", "Hunger"], ["stress", "Stress"]];
+function toast(m) { const t = $("#toast"); t.textContent = m; t.hidden = false; clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, 2800); }
+function sleepHours(sl) { if (!sl || !sl.bed || !sl.wake) return null; const [bh, bm] = sl.bed.split(":").map(Number), [wh, wm] = sl.wake.split(":").map(Number); let m = wh * 60 + wm - (bh * 60 + bm); if (m <= 0) m += 1440; return m / 60; }
+
+/* storage */
+const DB = {
+  p: null,
+  open() { return this.p || (this.p = new Promise((res, rej) => { const r = indexedDB.open("formbuch-coach", 1); r.onupgradeneeded = () => r.result.createObjectStore("checkins"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); })); },
+  async tx(mode, fn) { const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction("checkins", mode); const r = fn(t.objectStore("checkins")); t.oncomplete = () => res(r && r.result); t.onerror = () => rej(t.error); }); },
+  put(k, v) { return this.tx("readwrite", (s) => s.put(v, k)); },
+  del(k) { return this.tx("readwrite", (s) => s.delete(k)); },
+  all() { return this.tx("readonly", (s) => s.getAll()); }
+};
+const S = { list: [], client: null, week: null, cmpA: null, cmpB: null, cmpP: "front", confirmDel: false };
+
+async function load() { try { S.list = (await DB.all()) || []; } catch (e) { S.list = []; toast("Der Speicher in diesem Browser ist blockiert."); } render(); }
+function clients() {
+  const m = {};
+  S.list.forEach((c) => { (m[c.client] = m[c.client] || []).push(c); });
+  Object.values(m).forEach((a) => a.sort((x, y) => x.week.localeCompare(y.week)));
+  return m;
+}
+async function importFiles(files) {
+  let ok = 0, bad = 0;
+  for (const f of files) {
+    try {
+      const d = JSON.parse(await f.text());
+      if (!d || d.app !== "formbuch-checkin" || !d.client || !d.week) throw new Error("bad");
+      await DB.put(d.client + "|" + d.week, d); ok++;
+    } catch (e) { bad++; }
+  }
+  await load();
+  toast(ok + " Check-in" + (ok === 1 ? "" : "s") + " importiert" + (bad ? ", " + bad + " Datei" + (bad === 1 ? "" : "en") + " übersprungen" : "") + ".");
+}
+
+/* derived */
+function mergedDays(arr) { const days = {}; arr.forEach((c) => Object.assign(days, c.days || {})); return days; }
+function weightSeries(days) {
+  return Object.keys(days).sort().filter((d) => days[d].weight != null).map((d) => ({ x: parseIso(d).getTime(), y: days[d].weight, d }));
+}
+function lineChart(pts) {
+  const W = 520, H = 180, L = 40, R = 10, T = 12, B = 24;
+  if (pts.length < 2) return '<p class="sub">Noch zu wenige Gewichtseinträge für eine Kurve.</p>';
+  const xs = pts.map((p) => p.x), ys = pts.map((p) => p.y), x0 = Math.min(...xs), x1 = Math.max(...xs);
+  let y0 = Math.floor(Math.min(...ys) - 0.6), y1 = Math.ceil(Math.max(...ys) + 0.6);
+  const sx = (x) => L + (x1 === x0 ? .5 : (x - x0) / (x1 - x0)) * (W - L - R), sy = (y) => T + (1 - (y - y0) / (y1 - y0)) * (H - T - B);
+  let g = ""; for (let i = 0; i <= 3; i++) { const v = y0 + (y1 - y0) * i / 3; g += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + sy(v) + '" y2="' + sy(v) + '"/><text x="' + (L - 6) + '" y="' + (sy(v) + 4) + '" text-anchor="end">' + fmt(v, 1) + '</text>'; }
+  const d = pts.map((p, i) => (i ? "L" : "M") + sx(p.x).toFixed(1) + " " + sy(p.y).toFixed(1)).join(" ");
+  const avg = pts.map((p) => { const w = pts.filter((q) => q.x <= p.x && q.x > p.x - 7 * 864e5); return { x: p.x, y: w.reduce((a, q) => a + q.y, 0) / w.length }; });
+  const ad = avg.map((p, i) => (i ? "L" : "M") + sx(p.x).toFixed(1) + " " + sy(p.y).toFixed(1)).join(" ");
+  const lab = (x) => { const t = new Date(x); return t.getDate() + ". " + MON[t.getMonth()]; };
+  return '<svg class="chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Gewichtsverlauf">' + g + '<path d="' + d + '" fill="none" stroke="var(--blue)" stroke-width="2.2"/><path d="' + ad + '" fill="none" stroke="var(--yellow)" stroke-width="2" stroke-dasharray="4 4"/><text x="' + L + '" y="' + (H - 6) + '">' + lab(x0) + '</text><text x="' + (W - R) + '" y="' + (H - 6) + '" text-anchor="end">' + lab(x1) + '</text></svg>';
+}
+function flags(c) {
+  const out = [], s = c.summary || {}, t = (c.settings || {}).targets || {}, goal = ((c.settings || {}).body || {}).goal || "lean";
+  if (s.p != null && t.p && s.p < t.p * 0.85) out.push(["warn", "Eiweiß zu niedrig"]);
+  if (s.kcal != null && t.kcal && Math.abs(s.kcal - t.kcal) > t.kcal * 0.12) out.push(["warn", s.kcal < t.kcal ? "Kalorien zu niedrig" : "Kalorien zu hoch"]);
+  if (s.sleep != null && s.sleep < 7) out.push(["warn", "Wenig Schlaf"]);
+  if (s.foodDays != null && s.foodDays < 4) out.push(["warn", "Essen kaum erfasst"]);
+  if (s.delta != null) {
+    if (goal === "cut" && s.delta > 0.1) out.push(["warn", "Gewicht steigt im Cut"]);
+    if (goal !== "cut" && s.delta < -0.1) out.push(["warn", "Gewicht fällt im Aufbau"]);
+  }
+  if (!out.length) out.push(["good", "Alles im Plan"]);
+  return out;
+}
+
+/* plan editor */
+const RANGES = ["5-8", "6-10", "8-12", "10-15", "12-20"];
+const GOALS = { cut: "Cut", lean: "Lean Bulk", bulk: "Bulk" };
+S.drafts = {};
+function latestOf(arr) { return arr[arr.length - 1]; }
+function draftFor(arr) {
+  const c = latestOf(arr);
+  if (!S.drafts[c.client]) {
+    const set = c.settings || {};
+    S.drafts[c.client] = JSON.parse(JSON.stringify({ targets: set.targets || { kcal: 2500, p: 140, f: 75, c: 300 }, goal: (set.body || {}).goal || "lean", plan: set.plan || [], message: "" }));
+  }
+  return S.drafts[c.client];
+}
+function defRange(name) { return /curl|trizeps|seitheb|butterfly|fly|wade|beinbeuger|beinstreck|reverse|crunch|bauch/i.test(name) ? "10-15" : "8-12"; }
+function editorHtml(arr) {
+  const d = draftFor(arr), t = d.targets;
+  const opt = (list, cur) => list.map((o) => '<option value="' + esc(o[0]) + '"' + (String(o[0]) === String(cur) ? " selected" : "") + '>' + esc(o[1]) + '</option>').join("");
+  let h = '<details class="panel edp"' + (S.edOpen ? " open" : "") + ' id="edp"><summary><h3>Plan und Ziele bearbeiten</h3></summary><div class="ed">';
+  h += '<p class="sub" style="font-size:14px">Ausgangspunkt ist der Plan aus dem letzten Check-in. Wenn du fertig bist, schickst du die Plan-Datei per WhatsApp. ' + esc(latestOf(arr).client) + ' lädt sie im Check-in-Tab unter „Plan vom Coach“ und sieht vorher, was sich ändert.</p>';
+  h += '<div class="tg"><label>Ziel<select data-d="goal">' + opt(Object.entries(GOALS), d.goal) + '</select></label>' +
+    [["kcal", "Kalorien"], ["p", "Eiweiß g"], ["f", "Fett g"], ["c", "Kohlenh. g"]].map(([k, l]) => '<label>' + l + '<input data-d="t.' + k + '" inputmode="numeric" value="' + esc(t[k] != null ? t[k] : "") + '"></label>').join("") + '</div>';
+  d.plan.forEach((p, di) => {
+    h += '<div class="day"><div class="row" style="flex-wrap:nowrap"><input data-d="name.' + di + '" value="' + esc(p.name) + '" aria-label="Name Trainingstag" style="font-weight:700"><button class="x" data-ed="delday" data-di="' + di + '" aria-label="Trainingstag entfernen" style="width:36px;flex:none">✕</button></div>';
+    p.ex.forEach((e, ei) => {
+      h += '<div class="exr"><input data-d="ex.' + di + '.' + ei + '" value="' + esc(e[0]) + '" aria-label="Übung"><select data-d="sets.' + di + '.' + ei + '" aria-label="Sätze">' + opt([1, 2, 3, 4, 5, 6].map((n) => [n, n + " ×"]), e[1]) + '</select><select class="rr" data-d="range.' + di + '.' + ei + '" aria-label="Wiederholungen">' + opt(RANGES.map((r) => [r, r.replace("-", "–")]), e[2] || defRange(e[0])) + '</select><button class="x" data-ed="delex" data-di="' + di + '" data-ei="' + ei + '" aria-label="Übung entfernen">✕</button></div>';
+    });
+    h += '<span class="sub" style="font-size:12px">Spalten: Übung · Sätze · Wiederholungen</span><button class="btn small ghost" data-ed="addex" data-di="' + di + '" style="justify-self:start">+ Übung</button></div>';
+  });
+  h += '<button class="btn small" data-ed="addday" style="justify-self:start">+ Trainingstag</button>';
+  h += '<label class="lbl">Nachricht an ' + esc(latestOf(arr).client) + '<textarea data-d="message" placeholder="Zum Beispiel: Ab jetzt 3 Sätze Schrägbank, Brust hängt hinterher.">' + esc(d.message) + '</textarea></label>';
+  h += '<div class="row"><button class="btn blue" data-ed="send">Plan-Datei senden</button><button class="btn ghost small" data-ed="reset">Änderungen verwerfen</button></div></div></details>';
+  return h;
+}
+async function sendPlan(arr) {
+  const c = latestOf(arr), d = draftFor(arr);
+  const plan = d.plan.map((p) => ({ id: p.id, name: p.name.trim() || "Tag", note: p.note, ex: p.ex.filter((e) => e[0] && e[0].trim()).map((e) => [e[0].trim(), +e[1] || 2, e[2] || defRange(e[0])]) })).filter((p) => p.ex.length);
+  if (!plan.length) { toast("Der Plan ist leer."); return; }
+  const payload = { app: "formbuch-plan", v: 1, client: c.client, createdAt: new Date().toISOString(), goal: d.goal, targets: d.targets, plan, message: d.message.trim() };
+  const today = new Date().toISOString().slice(0, 10);
+  const file = new File([JSON.stringify(payload)], "plan-" + c.client.replace(/[^\wäöüÄÖÜß-]+/g, "_") + "-" + today + ".json", { type: "application/json" });
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], title: "Neuer Plan für " + c.client }); toast("Plan geteilt."); return; }
+  } catch (e) { if (e && e.name === "AbortError") return; }
+  const a = document.createElement("a"); a.href = URL.createObjectURL(file); a.download = file.name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  toast("Plan-Datei gespeichert. Schick sie jetzt an " + c.client + ".");
+}
+
+/* views */
+function render() {
+  const m = clients(), names = Object.keys(m).sort((a, b) => a.localeCompare(b, "de"));
+  if (S.client && !m[S.client]) S.client = null;
+  $("#app").innerHTML = S.client ? viewClient(m[S.client]) : viewList(m, names);
+  const edp = document.getElementById("edp"); if (edp) edp.addEventListener("toggle", () => { S.edOpen = edp.open; });
+}
+function viewList(m, names) {
+  let h = '<div class="drop" id="drop"><h3>Check-in-Dateien hier ablegen</h3><p class="sub">Oder oben auf „Check-ins importieren“ tippen. Mehrere Dateien auf einmal gehen auch.</p></div>';
+  if (!names.length) return h + '<p class="empty">Noch keine Check-ins. Deine Leute schicken dir ihre Datei aus dem Check-in-Tab der App, zum Beispiel per WhatsApp.</p>';
+  h += '<div><h2>Deine Leute</h2><p class="sub">' + names.length + ' Personen · ' + S.list.length + ' Check-ins</p></div><div class="clients">';
+  names.forEach((n) => {
+    const arr = m[n], c = arr[arr.length - 1], s = c.summary || {}, b = (c.settings || {}).body || {};
+    h += '<button class="client" data-open="' + esc(n) + '"><div class="row spread"><span class="name">' + esc(n) + '</span>' + (c.ranks && c.ranks.overall ? '<span class="gem" style="background:' + esc(c.ranks.overall.color) + '">' + esc((c.ranks.overall.name.split(" ")[1]) || "★") + '</span>' : '') + '</div>' +
+      '<span class="sub" style="font-size:14px">Letzter Check-in: ' + weekLabel(c.week) + ' · ' + esc(GOALN[b.goal] || "Lean Bulk") + '</span>' +
+      '<span class="num">' + fmt(s.weight, 1) + ' kg' + (s.delta != null ? ' (' + (s.delta >= 0 ? "+" : "") + fmt(s.delta, 1) + ')' : '') + ' · ' + (s.train || 0) + ' Trainings</span>' +
+      '<div class="chips">' + flags(c).map((f) => '<span class="chip ' + f[0] + '">' + esc(f[1]) + '</span>').join("") + '</div></button>';
+  });
+  return h + '</div>';
+}
+function viewClient(arr) {
+  const weeks = arr.map((c) => c.week);
+  if (!weeks.includes(S.week)) S.week = weeks[weeks.length - 1];
+  const c = arr.find((x) => x.week === S.week), s = c.summary || {}, set = c.settings || {}, t = set.targets || {}, b = set.body || {}, ans = (c.checkin || {}).answers || {};
+  const cls = (ok) => ok == null ? "" : ok ? "good" : "warn";
+  let h = '<div class="row spread"><button class="btn ghost small" data-back>‹ Alle Leute</button><select id="week" aria-label="Woche">' + weeks.slice().reverse().map((w) => '<option value="' + w + '"' + (w === S.week ? " selected" : "") + '>' + weekLabel(w) + '</option>').join("") + '</select></div>';
+  h += '<div><span class="label">' + esc(weekLabel(c.week)) + (c.range ? ' · ' + shortDate(c.range[0]) + ' bis ' + shortDate(c.range[1]) : '') + '</span><h2>' + esc(c.client) + '</h2><p class="sub">' + esc(GOALN[b.goal] || "Lean Bulk") + (b.w ? ' · ' + (b.a || "?") + ' Jahre · ' + (b.h || "?") + ' cm' : '') + ' · Ziel ' + fmt(t.kcal) + ' kcal, ' + fmt(t.p) + ' g Eiweiß' + (c.stats ? ' · Level ' + c.stats.level + ', Streak ' + c.stats.streak : '') + '</p></div>';
+  h += '<div class="chips">' + flags(c).map((f) => '<span class="chip ' + f[0] + '">' + esc(f[1]) + '</span>').join("") + '</div>';
+  h += '<div class="grid"><div class="panel"><h3>Die Woche</h3><div class="stats num">' +
+    '<div><b>' + fmt(s.weight, 1) + '</b><span>kg Schnitt' + (s.delta != null ? ' (' + (s.delta >= 0 ? "+" : "") + fmt(s.delta, 1) + ')' : '') + '</span></div>' +
+    '<div class="' + cls(s.train != null ? s.train >= (b.d || 4) - 1 : null) + '"><b>' + (s.train || 0) + '</b><span>von ' + (b.d || 4) + ' Trainings</span></div>' +
+    '<div class="' + cls(s.foodDays != null ? s.foodDays >= 5 : null) + '"><b>' + (s.foodDays || 0) + '/7</b><span>Tage Essen erfasst</span></div>' +
+    '<div class="' + cls(s.kcal != null && t.kcal ? Math.abs(s.kcal - t.kcal) <= t.kcal * 0.12 : null) + '"><b>' + fmt(s.kcal) + '</b><span>kcal Schnitt / ' + fmt(t.kcal) + '</span></div>' +
+    '<div class="' + cls(s.p != null && t.p ? s.p >= t.p * 0.85 : null) + '"><b>' + fmt(s.p) + '</b><span>g Eiweiß / ' + fmt(t.p) + '</span></div>' +
+    '<div class="' + cls(s.sleep != null ? s.sleep >= 7 : null) + '"><b>' + fmt(s.sleep, 1) + '</b><span>h Schlaf Schnitt</span></div></div></div>';
+  h += '<div class="panel"><h3>Feedback</h3><div class="answers">' + QS.map(([k, l]) => '<div><span>' + l + '</span><span class="dots" aria-label="' + (ans[k] || "keine Angabe") + ' von 5">' + [1, 2, 3, 4, 5].map((i) => '<i class="' + (ans[k] >= i ? "on" : "") + '"></i>').join("") + '</span></div>').join("") + '</div>' +
+    ((c.checkin || {}).notes ? '<div class="note">' + esc(c.checkin.notes) + '</div>' : '<p class="sub">Keine Notiz.</p>') + '</div></div>';
+  const ph = c.photos || {};
+  h += '<div class="panel"><h3>Fotos ' + esc(weekLabel(c.week)) + '</h3>' + (Object.keys(ph).length ? '<div class="poses">' + POSES.map((p) => '<figure><div class="ph">' + (ph[p.id] ? '<img alt="' + p.n + '" src="' + esc(ph[p.id]) + '">' : 'Kein Foto') + '</div><figcaption>' + p.n + '</figcaption></figure>').join("") + '</div>' : '<p class="sub">Diese Woche ohne Fotos.</p>') + '</div>';
+  const pw = arr.filter((x) => x.photos && Object.keys(x.photos).length).map((x) => x.week);
+  if (pw.length > 1) {
+    const A = pw.includes(S.cmpA) ? S.cmpA : pw[0], B = pw.includes(S.cmpB) ? S.cmpB : pw[pw.length - 1];
+    const sel = (id, cur) => '<select id="' + id + '">' + pw.map((w) => '<option value="' + w + '"' + (w === cur ? " selected" : "") + '>' + weekLabel(w) + '</option>').join("") + '</select>';
+    const pic = (w) => { const x = arr.find((y) => y.week === w), v = x && x.photos && x.photos[S.cmpP]; return '<figure><div class="ph">' + (v ? '<img alt="" src="' + esc(v) + '">' : 'Kein Foto') + '</div><figcaption>' + weekLabel(w) + '</figcaption></figure>'; };
+    h += '<div class="panel"><div class="row spread"><h3>Vorher und nachher</h3><div class="row">' + sel("cmpa", A) + sel("cmpb", B) + '<select id="cmpp">' + POSES.map((p) => '<option value="' + p.id + '"' + (p.id === S.cmpP ? " selected" : "") + '>' + p.n + '</option>').join("") + '</select></div></div><div class="compare">' + pic(A) + pic(B) + '</div></div>';
+  }
+  const days = mergedDays(arr);
+  h += '<div class="grid"><div class="panel"><h3>Gewicht</h3>' + lineChart(weightSeries(days)) + '<p class="sub" style="font-size:13px"><span style="color:var(--blue)">━ Tageswerte</span> · <span style="color:var(--yellow)">┅ 7-Tage-Schnitt</span></p></div>';
+  h += '<div class="panel"><h3>Kraft-Rang</h3>' + (c.ranks && c.ranks.lifts && c.ranks.lifts.length ? '<p class="sub">Gesamt: <b style="color:' + esc(c.ranks.overall.color) + '">' + esc(c.ranks.overall.name) + '</b> bei ' + fmt(c.ranks.bw, 1) + ' kg</p><div class="list">' + c.ranks.lifts.map((l) => '<div><span class="gem" style="background:' + esc(l.color || "#8A93A4") + '">' + esc(l.name.split(" ")[1] || "★") + '</span><span>' + esc(l.ex) + ' <span class="sub" style="font-size:13px">· ' + esc(l.name) + '</span></span><span class="num sub">' + fmt(l.e1, 1) + ' kg Max.</span></div>').join("") + '</div>' : '<p class="sub">Noch kein Rang.</p>') + '</div></div>';
+  const wkDays = Object.keys(days).sort().filter((d) => c.range && d >= c.range[0] && d <= c.range[1]);
+  let wo = "";
+  wkDays.forEach((d) => {
+    const day = days[d];
+    for (const pid in day.wo || {}) {
+      const plan = (set.plan || []).find((p) => p.id === pid), exs = day.wo[pid], lines = [];
+      for (const ex in exs) { const done = (exs[ex] || []).filter((x) => x && x.d); if (done.length) lines.push('<span>' + esc(ex) + ': <b class="num">' + done.map((x) => (x.w != null ? fmt(x.w, x.w % 1 ? 1 : 0) : "–") + "×" + (x.r != null ? x.r : "–")).join("  ") + '</b></span>'); }
+      if (lines.length) wo += '<div class="wo"><b>' + shortDate(d) + ' · ' + esc(plan ? plan.name : pid) + (day.gym ? ' · ' + esc(day.gym) : '') + '</b>' + lines.join("") + '</div>';
+    }
+    if (day.rest) wo += '<div class="wo"><b>' + shortDate(d) + ' · Ruhetag</b></div>';
+  });
+  h += '<div class="panel"><h3>Trainings dieser Woche</h3>' + (wo || '<p class="sub">Keine Trainings eingetragen.</p>') + '</div>';
+  h += editorHtml(arr);
+  h += '<div class="panel"><h3>Daten löschen</h3>' + (S.confirmDel ? '<div class="confirm"><span>Alle ' + arr.length + ' Check-ins von ' + esc(c.client) + ' von diesem Gerät löschen? Das lässt sich nicht rückgängig machen.</span><div class="row"><button class="btn red small" data-delyes>Ja, löschen</button><button class="btn small" data-delno>Abbrechen</button></div></div>' : '<p class="sub" style="font-size:14px">Wenn jemand das Coaching beendet oder um Löschung bittet, entfernst du hier alle Daten dieser Person.</p><button class="btn small" data-del style="justify-self:start">Alle Daten von ' + esc(c.client) + ' löschen</button>') + '</div>';
+  return h;
+}
+
+/* events */
+document.addEventListener("click", async (e) => {
+  const o = e.target.closest("[data-open]"); if (o) { S.client = o.dataset.open; S.week = null; S.confirmDel = false; render(); window.scrollTo(0, 0); return; }
+  if (e.target.closest("[data-back]")) { S.client = null; render(); return; }
+  const ed = e.target.closest("[data-ed]");
+  if (ed && S.client) {
+    const arr = clients()[S.client], d = draftFor(arr), di = +ed.dataset.di, ei = +ed.dataset.ei;
+    S.edOpen = true;
+    if (ed.dataset.ed === "addex") d.plan[di].ex.push(["", 2, "8-12"]);
+    if (ed.dataset.ed === "delex") d.plan[di].ex.splice(ei, 1);
+    if (ed.dataset.ed === "addday") d.plan.push({ id: "d" + Math.random().toString(36).slice(2, 8), name: "Neuer Tag", ex: [["", 2, "8-12"]] });
+    if (ed.dataset.ed === "delday") d.plan.splice(di, 1);
+    if (ed.dataset.ed === "reset") { delete S.drafts[S.client]; toast("Änderungen verworfen."); }
+    if (ed.dataset.ed === "send") { sendPlan(arr); return; }
+    const y = window.scrollY; render(); window.scrollTo(0, y); return;
+  }
+  if (e.target.closest("[data-del]")) { S.confirmDel = true; render(); return; }
+  if (e.target.closest("[data-delno]")) { S.confirmDel = false; render(); return; }
+  if (e.target.closest("[data-delyes]")) { const n = S.client; for (const c of S.list.filter((x) => x.client === n)) await DB.del(c.client + "|" + c.week); S.client = null; S.confirmDel = false; await load(); toast("Daten von " + n + " gelöscht."); }
+});
+document.addEventListener("change", (e) => {
+  const el = e.target;
+  if (el.id === "files" && el.files.length) { importFiles([...el.files]); el.value = ""; }
+  if (el.id === "week") { S.week = el.value; render(); }
+  if (el.dataset && el.dataset.d && S.client) {
+    const d = draftFor(clients()[S.client]), k = el.dataset.d.split("."), v = el.value;
+    if (k[0] === "goal") d.goal = v;
+    if (k[0] === "t") { const n = Number(String(v).replace(",", ".")); if (n > 0) d.targets[k[1]] = Math.round(n); }
+    if (k[0] === "name") d.plan[+k[1]].name = v.slice(0, 40);
+    if (k[0] === "ex") d.plan[+k[1]].ex[+k[2]][0] = v.slice(0, 60);
+    if (k[0] === "sets") d.plan[+k[1]].ex[+k[2]][1] = +v;
+    if (k[0] === "range") d.plan[+k[1]].ex[+k[2]][2] = v;
+    if (k[0] === "message") d.message = v.slice(0, 1000);
+  }
+  if (el.id === "cmpa") { S.cmpA = el.value; render(); }
+  if (el.id === "cmpb") { S.cmpB = el.value; render(); }
+  if (el.id === "cmpp") { S.cmpP = el.value; render(); }
+});
+document.addEventListener("dragover", (e) => { e.preventDefault(); const d = $("#drop"); if (d) d.classList.add("over"); });
+document.addEventListener("dragleave", () => { const d = $("#drop"); if (d) d.classList.remove("over"); });
+document.addEventListener("drop", (e) => { e.preventDefault(); const d = $("#drop"); if (d) d.classList.remove("over"); if (e.dataTransfer.files.length) importFiles([...e.dataTransfer.files]); });
+load();
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+}
+})();
+</script>
+</body>
+</html>
