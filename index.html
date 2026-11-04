@@ -513,6 +513,13 @@ const POSES = [
   { id: "front", n: "Vorne entspannt" }, { id: "side", n: "Seite" },
   { id: "back", n: "Hinten entspannt" }, { id: "dbl", n: "Doppelbizeps vorne" }
 ];
+function cleanMeals(meals) {
+  if (!Array.isArray(meals)) return null;
+  const out = meals.filter((m) => m && m.slot && Array.isArray(m.opts)).slice(0, 8).map((m) => ({ slot: String(m.slot).slice(0, 40),
+    opts: m.opts.filter((o) => o && o.n).slice(0, 6).map((o) => ({ n: String(o.n).slice(0, 60), k: Math.max(0, Math.min(5000, Math.round(+o.k || 0))), p: Math.max(0, Math.min(500, Math.round(+o.p || 0))), items: (Array.isArray(o.items) ? o.items : []).slice(0, 15).map((i) => String(i).slice(0, 80)) })) })).filter((m) => m.opts.length);
+  return out.length ? out : null;
+}
+const getMeals = () => cleanMeals(S.settings.meals) || MEALS;
 const TITLES = ["Rookie", "Neuling", "Stammgast", "Eisenschieber", "Pumper", "Scheibensammler", "Gym-Veteran", "Maschine", "Monster", "Legende"];
 
 /* ---------- Helpers ---------- */
@@ -1139,9 +1146,11 @@ function viewTraining() {
   if (plan.note) h += '<p class="note">' + esc(plan.note) + '</p>';
 
   if (S.editPlan) {
-    h += '<div class="panel"><div class="row spread"><h3>' + esc(plan.name) + ' bearbeiten</h3><button class="btn small blue" data-action="editdone">Fertig</button></div><div>';
-    plan.ex.forEach((e, i) => { h += '<div class="edit-ex2"><span>' + esc(e[0]) + '</span><div class="row" style="gap:6px"><span class="stepper"><button data-action="setsminus" data-i="' + i + '" aria-label="Weniger Sätze">−</button><span class="num">' + e[1] + ' Sätze</span><button data-action="setsplus" data-i="' + i + '" aria-label="Mehr Sätze">+</button></span><select id="rr-' + i + '" aria-label="Wiederholungsbereich ' + esc(e[0]) + '">' + RANGES.map((r) => '<option value="' + r + '"' + (r === rangeStr(e) ? ' selected' : '') + '>' + r.replace('-', '–') + ' Wdh.</option>').join('') + '</select><button class="iconbtn" data-action="exdel" data-i="' + i + '" aria-label="' + esc(e[0]) + ' entfernen" style="margin-left:auto">✕</button></div></div>'; });
+    h += '<div class="panel"><div class="row spread"><h3>Trainingstag bearbeiten</h3><button class="btn small blue" data-action="editdone">Fertig</button></div>';
+    h += '<div class="row" style="flex-wrap:nowrap;align-items:end"><div class="field" style="flex:1"><label class="label" for="dayname">Name des Tages</label><input id="dayname" value="' + esc(plan.name) + '" maxlength="40"></div><button class="iconbtn" data-action="daydel" aria-label="Tag löschen" title="Tag löschen" style="height:42px;width:42px">✕</button></div><div>';
+    plan.ex.forEach((e, i) => { h += '<div class="edit-ex2"><span>' + esc(e[0]) + '</span><div class="row" style="gap:6px"><span class="stepper"><button data-action="exup" data-i="' + i + '" aria-label="Nach oben"' + (i === 0 ? ' disabled' : '') + '>▲</button><button data-action="exdown" data-i="' + i + '" aria-label="Nach unten"' + (i === plan.ex.length - 1 ? ' disabled' : '') + '>▼</button></span><span class="stepper"><button data-action="setsminus" data-i="' + i + '" aria-label="Weniger Sätze">−</button><span class="num">' + e[1] + ' Sätze</span><button data-action="setsplus" data-i="' + i + '" aria-label="Mehr Sätze">+</button></span><select id="rr-' + i + '" aria-label="Wiederholungsbereich ' + esc(e[0]) + '">' + RANGES.map((r) => '<option value="' + r + '"' + (r === rangeStr(e) ? ' selected' : '') + '>' + r.replace('-', '–') + ' Wdh.</option>').join('') + '</select><button class="iconbtn" data-action="exdel" data-i="' + i + '" aria-label="' + esc(e[0]) + ' entfernen" style="margin-left:auto">✕</button></div></div>'; });
     h += '</div><div class="row" style="flex-wrap:nowrap;align-items:end"><div class="field" style="flex:1"><label class="label" for="newex">Neue Übung</label><input id="newex" placeholder="z. B. Klimmzüge"></div><button class="btn" data-action="exadd">Hinzufügen</button></div>';
+    h += '<div class="row"><button class="btn" data-action="dayadd">+ Neuer Trainingstag</button></div>';
     h += '<div class="row" style="flex-wrap:nowrap;align-items:end"><div class="field" style="flex:1"><label class="label" for="tplsel">Ganzen Plan durch Vorlage ersetzen</label><select id="tplsel">' + Object.keys(PLAN_TEMPLATES).map((k) => '<option value="' + k + '">' + esc(PLAN_TEMPLATES[k].n) + '</option>').join("") + '</select></div><button class="btn" data-action="tplload">Laden</button></div>';
     h += '<button class="btn ghost small" data-action="resetplan" style="justify-self:start">Diesen Tag auf Standard zurücksetzen</button></div>';
     return h;
@@ -1399,18 +1408,21 @@ function cleanPlan(plan) {
   return out.length ? out : null;
 }
 function previewPlan(d) {
-  const plan = cleanPlan(d.plan), t = d.targets || null;
-  if (!plan && !t) { toast("In der Datei ist kein Plan."); return; }
+  const plan = cleanPlan(d.plan), t = d.targets || null, meals = cleanMeals(d.meals), note = d.nutritionNote ? String(d.nutritionNote).slice(0, 1000) : "";
+  if (!plan && !t && !meals) { toast("In der Datei ist kein Plan."); return; }
   const days = (plan || []).map((p) => '<div class="opt"><b>' + esc(p.name) + '</b><span class="sub" style="font-size:13px">' + p.ex.map((e) => esc(e[0]) + " " + e[1] + "×" + rangeStr(e)).join(", ") + '</span></div>').join("");
-  askConfirm({ kicker: "Von deinem Coach", title: "Neuer Plan", yesLabel: "Übernehmen", noLabel: "Abbrechen",
+  const ms = (meals || []).map((m) => '<div class="opt"><b>' + esc(m.slot) + '</b><span class="sub" style="font-size:13px">' + m.opts.map((o) => esc(o.n) + " (" + fmt(o.k) + " kcal)").join(", ") + '</span></div>').join("");
+  const title = plan && meals ? "Neuer Trainings- und Ernährungsplan" : meals || (t && !plan) ? "Neuer Ernährungsplan" : "Neuer Trainingsplan";
+  askConfirm({ kicker: "Von deinem Coach", title, yesLabel: "Übernehmen", noLabel: "Abbrechen",
     body: (d.message ? '<div class="note" style="white-space:pre-wrap">' + esc(String(d.message).slice(0, 1000)) + '</div>' : '') +
       (t ? '<p class="sub">Ziele: <b style="color:var(--ink)">' + fmt(t.kcal) + ' kcal, ' + fmt(t.p) + ' g Eiweiß</b>' + (d.goal && GOALS[d.goal] ? ' · ' + GOALS[d.goal].n : '') + '</p>' : '') +
-      '<div style="display:grid;gap:8px;max-height:42vh;overflow:auto">' + days + '</div><p class="sub" style="font-size:13px">Deine bisherigen Einträge bleiben erhalten.</p>',
+      '<div style="display:grid;gap:8px;max-height:42vh;overflow:auto">' + days + ms + '</div><p class="sub" style="font-size:13px">Deine bisherigen Einträge bleiben erhalten.' + (plan ? ' Deinen Trainingsplan kannst du danach weiter selbst anpassen.' : '') + '</p>',
     yes: () => {
       if (plan) { S.settings.plan = plan; S.settings.planChosen = true; }
+      if (meals) { S.settings.meals = meals; S.settings.nutritionNote = note; }
       if (t) { const nt = {}; ["kcal", "p", "f", "c", "sleep"].forEach((k) => { const v = Number(t[k]); if (v > 0 && v < 10000) nt[k] = v; }); S.settings.targets = Object.assign({}, S.settings.targets, nt); }
       if (d.goal && GOALS[d.goal] && S.settings.body) S.settings.body = Object.assign({}, S.settings.body, { goal: d.goal });
-      S.trainDay = null; saveSettings(); render(); toast("Neuer Plan übernommen.", true);
+      S.trainDay = null; saveSettings(); render(); toast(title.replace("Neuer", "Neuen").replace("plan", "plan") + " übernommen.", true);
     }
   });
 }
@@ -1435,7 +1447,7 @@ function viewEssen() {
   h += '<div class="grid2">' + meter("Kalorien", ft.k, t.kcal, " kcal", "var(--yellow)") + meter("Eiweiß", ft.p, t.p, " g", "var(--blue)") + '</div>';
   h += foodsPanel();
   h += '<div class="panel"><h3>Aus deinem Plan</h3>';
-  MEALS.forEach((m, mi) => { h += '<div class="mealslot"><span class="label">' + esc(m.slot) + '</span><div class="chips">' + m.opts.map((o, oi) => '<button class="chip" data-action="addmeal" data-m="' + mi + '" data-o="' + oi + '">+ ' + esc(o.n) + ' <span class="sub num" style="font-size:13px">' + fmt(o.k) + '</span></button>').join("") + '</div></div>'; });
+  getMeals().forEach((m, mi) => { h += '<div class="mealslot"><span class="label">' + esc(m.slot) + '</span><div class="chips">' + m.opts.map((o, oi) => '<button class="chip" data-action="addmeal" data-m="' + mi + '" data-o="' + oi + '">+ ' + esc(o.n) + ' <span class="sub num" style="font-size:13px">' + fmt(o.k) + '</span></button>').join("") + '</div></div>'; });
   h += '</div>';
   h += '<div class="panel"><h3>Eigener Eintrag</h3><div class="addform"><div class="field"><label class="label" for="fname">Was</label><input id="fname" placeholder="z. B. Döner"></div><div class="field"><label class="label" for="fk">kcal</label><input id="fk" inputmode="numeric" placeholder="650"></div><div class="field"><label class="label" for="fp">Eiweiß g</label><input id="fp" inputmode="numeric" placeholder="35"></div></div><button class="btn blue" data-action="addfood" style="justify-self:start">Eintragen</button></div>';
   h += '<div class="panel"><div class="row spread"><h3>Gegessen</h3><span class="sub num">' + (day.food || []).length + ' Einträge</span></div>';
@@ -1453,10 +1465,12 @@ function planDetails() {
   if (bd) intro = 'Berechnet für ' + fkg(bd.w) + ' kg, ' + bd.h + ' cm, ' + bd.a + ' Jahre und ' + bd.d + ' Trainingstage pro Woche: Dein Verbrauch liegt bei etwa ' + fmt(Math.round((t.kcal - G.kcal) / 50) * 50) + ' kcal. Ziel <b>' + G.n + '</b>: ' + (G.kcal > 0 ? 'rund ' + G.kcal + ' kcal Überschuss' : 'rund ' + (-G.kcal) + ' kcal Defizit') + ' pro Tag' + (gk === "cut" ? ', dazu viel Eiweiß, damit die Muskeln bleiben.' : '.');
   else if (STANDALONE) intro = 'Trag unter Verlauf bei den Zielen deine Körperdaten ein, dann passt die App Kalorien und Eiweiß an dich an.';
   else intro = 'Trag unter Verlauf bei den Zielen deine Körperdaten ein, dann passt die App Kalorien und Eiweiß an dich an.';
+  const coachMeals = !!cleanMeals(S.settings.meals);
+  if (coachMeals) intro = 'Diesen Plan hat dein Coach für dich erstellt.' + (S.settings.nutritionNote ? '</p><div class="note" style="white-space:pre-wrap">' + esc(S.settings.nutritionNote) + '</div><p>' : '');
   const scale = t.kcal / 2875;
-  const scaleTxt = Math.abs(scale - 1) > 0.07 ? '<p><b>Portionen anpassen:</b> Die Mengen unten sind für etwa 2.900 kcal gedacht. Für dein Ziel nimm ungefähr ' + Math.round(scale * 100) + ' % davon.</p>' : '';
-  h += '<div class="prose"><p>' + intro + '</p><p><b>So geht der Tag auf:</b> 3 Mahlzeiten mit je etwa einem Drittel deiner Kalorien und dazu ein Shake oder Skyr. Pro Mahlzeit eine Option aussuchen, tauschen ist erlaubt.</p>' + scaleTxt + '</div>';
-  MEALS.forEach((m) => { h += '<div class="mealslot"><span class="label">' + esc(m.slot) + '</span>' + m.opts.map((o) => '<div class="opt"><div class="row spread"><b>' + esc(o.n) + '</b><span class="sub num" style="font-size:14px">' + fmt(o.k) + ' kcal · ' + o.p + ' g Eiweiß</span></div><ul>' + o.items.map((i) => '<li>' + esc(i) + '</li>').join("") + '</ul></div>').join("") + '</div>'; });
+  const scaleTxt = !coachMeals && Math.abs(scale - 1) > 0.07 ? '<p><b>Portionen anpassen:</b> Die Mengen unten sind für etwa 2.900 kcal gedacht. Für dein Ziel nimm ungefähr ' + Math.round(scale * 100) + ' % davon.</p>' : '';
+  h += '<div class="prose"><p>' + intro + '</p><p><b>So geht der Tag auf:</b> ' + (coachMeals ? 'Pro Mahlzeit eine Option aussuchen, tauschen ist erlaubt.' : '3 Mahlzeiten mit je etwa einem Drittel deiner Kalorien und dazu ein Shake oder Skyr. Pro Mahlzeit eine Option aussuchen, tauschen ist erlaubt.') + '</p>' + scaleTxt + '</div>';
+  getMeals().forEach((m) => { h += '<div class="mealslot"><span class="label">' + esc(m.slot) + '</span>' + m.opts.map((o) => '<div class="opt"><div class="row spread"><b>' + esc(o.n) + '</b><span class="sub num" style="font-size:14px">' + fmt(o.k) + ' kcal · ' + o.p + ' g Eiweiß</span></div><ul>' + o.items.map((i) => '<li>' + esc(i) + '</li>').join("") + '</ul></div>').join("") + '</div>'; });
   const ctl = gk === "cut" ? "Ziel ist etwa 0,5 bis 1 % deines Gewichts weniger pro Woche. Geht es zwei Wochen lang nicht runter, iss etwa 200 kcal weniger." : gk === "bulk" ? "Ziel ist etwa 1,5 bis 2,5 kg mehr pro Monat. Steht das Gewicht zwei Wochen lang, iss etwa 200 kcal mehr." : "Ziel ist etwa 0,5 bis 1,5 kg mehr pro Monat. Steht das Gewicht zwei Wochen lang, iss etwa 200 kcal mehr.";
   h += '<div class="prose"><p><b>Kontrolle:</b> Morgens wiegen und auf den Wochenschnitt im Verlauf schauen. ' + ctl + '</p><p><b>Meal Prep:</b> Mittagessen für 2 bis 3 Tage am Stück kochen und in Dosen mitnehmen. Hält im Kühlschrank etwa 3 Tage.</p><p>Die kcal-Werte sind gerundete Richtwerte. Für eigene Gerichte reicht eine grobe Schätzung, wichtig ist die Tendenz über die Woche.</p></div>';
   return h + '</details>';
@@ -1601,7 +1615,7 @@ async function sendCheckin() {
   if (photosAllowed()) for (const p of POSES) if (ci.photos && ci.photos[p.id]) { const k = wk + "-" + p.id; const v = PHOTO_CACHE[k] || await Photos.get(k); if (v) photos[p.id] = v; }
   const st = computeStats(), rk = computeRanks(st);
   const payload = { app: "formbuch-checkin", v: 1, client: name, week: wk, range: [mon, sun], exportedAt: new Date().toISOString(),
-    settings: { targets: S.settings.targets, body: S.settings.body, gyms: S.settings.gyms, plan: S.settings.plan },
+    settings: { targets: S.settings.targets, body: S.settings.body, gyms: S.settings.gyms, plan: S.settings.plan, meals: cleanMeals(S.settings.meals), nutritionNote: S.settings.nutritionNote || "" },
     checkin: { answers: ci.answers || {}, notes: ci.notes || "", done: ci.done }, summary: weekSummary(S.date),
     stats: { level: st.lvl, title: st.title, xp: st.xp, streak: st.streak, workouts: st.workouts, prs: st.prs },
     ranks: rk ? { bw: rk.bw, overall: rk.overall, lifts: rk.lifts.map((l) => ({ ex: l.ex, e1: Math.round(l.e1 * 10) / 10, name: l.name, tier: l.tier, color: l.color })) } : null,
@@ -1845,15 +1859,21 @@ document.addEventListener("click", (ev) => {
     case "setsminus": { const e = plan.ex[+b.dataset.i]; if (e[1] > 1) { e[1]--; saveSettings(); render(); } break; }
     case "setsplus": { const e = plan.ex[+b.dataset.i]; if (e[1] < 8) { e[1]++; saveSettings(); render(); } break; }
     case "exdel": plan.ex.splice(+b.dataset.i, 1); saveSettings(); render(); break;
-    case "exadd": { const v = ($("#newex").value || "").trim(); if (v) { if (plan.ex.some((e) => e[0] === v)) { toast("Diese Übung ist schon im Plan."); break; } plan.ex.push([v.slice(0, 60), 2]); saveSettings(); render(); } break; }
+    case "exadd": { const v = ($("#newex").value || "").trim(); if (v) { S.settings.planChosen = true; if (plan.ex.some((e) => e[0] === v)) { toast("Diese Übung ist schon im Plan."); break; } plan.ex.push([v.slice(0, 60), 2]); saveSettings(); render(); } break; }
     case "resetplan": { const all = [DEFAULT_SETTINGS.plan].concat(Object.values(PLAN_TEMPLATES).map((t) => t.plan)); let def = null; all.forEach((pl) => { if (!def) def = pl.find((p) => p.id === plan.id); }); if (def) { plan.ex = clone(def.ex); saveSettings(); render(); toast("Tag zurückgesetzt."); } else toast("Für diesen Tag gibt es keinen Standard."); break; }
     case "planok": S.settings.planChosen = true; saveSettings(); render(); break;
+    case "exup": case "exdown": { const i = +b.dataset.i, j = a === "exup" ? i - 1 : i + 1; if (j < 0 || j >= plan.ex.length) break; const tmp = plan.ex[i]; plan.ex[i] = plan.ex[j]; plan.ex[j] = tmp; S.settings.planChosen = true; saveSettings(); render(); break; }
+    case "dayadd": { const id = "d" + rid(); S.settings.plan.push({ id, name: "Neuer Tag", ex: [] }); S.settings.planChosen = true; S.trainDay = id; saveSettings(); render(); setTimeout(() => { const i = $("#dayname"); if (i) { i.focus(); i.select(); } }, 30); break; }
+    case "daydel": { if (S.settings.plan.length <= 1) { toast("Mindestens ein Trainingstag muss bleiben."); break; }
+      askConfirm({ title: plan.name + " löschen?", yesLabel: "Löschen", noLabel: "Abbrechen", body: '<p class="sub">Der Tag verschwindet aus deinem Plan. Bereits eingetragene Trainings und Bestleistungen bleiben erhalten.</p>',
+        yes: () => { S.settings.plan = S.settings.plan.filter((p) => p.id !== plan.id); S.trainDay = null; S.editPlan = false; saveSettings(); render(); } });
+      break; }
     case "tplload": { const k = ($("#tplsel") || {}).value, t = PLAN_TEMPLATES[k]; if (!t) break;
       askConfirm({ kicker: "Plan-Vorlage", title: t.n, yesLabel: "Plan ersetzen", noLabel: "Abbrechen",
         body: '<div style="display:grid;gap:8px;max-height:42vh;overflow:auto">' + t.plan.map((p) => '<div class="opt"><b>' + esc(p.name) + '</b><span class="sub" style="font-size:13px">' + p.ex.map((e) => esc(e[0]) + " " + e[1] + "×" + e[2]).join(", ") + '</span></div>').join("") + '</div><p class="sub" style="font-size:13px">Dein bisheriger Plan wird ersetzt. Alle Einträge und Bestleistungen bleiben erhalten.</p>',
         yes: () => { S.settings.plan = clone(t.plan); S.settings.planChosen = true; S.trainDay = null; S.editPlan = false; saveSettings(); render(); toast("Vorlage geladen.", true); } });
       break; }
-    case "addmeal": { const o = MEALS[+b.dataset.m].opts[+b.dataset.o]; if ((getDay(S.date).food || []).length < 4) xpFloat(b.getBoundingClientRect(), "+5 XP"); const before = foodTotals(getDay(S.date)).p; mutateDay(S.date, (d) => { d.food = d.food || []; d.food.push({ id: rid(), n: o.n, k: o.k, p: o.p }); }); afterFood(before, o.n); break; }
+    case "addmeal": { const o = getMeals()[+b.dataset.m].opts[+b.dataset.o]; if ((getDay(S.date).food || []).length < 4) xpFloat(b.getBoundingClientRect(), "+5 XP"); const before = foodTotals(getDay(S.date)).p; mutateDay(S.date, (d) => { d.food = d.food || []; d.food.push({ id: rid(), n: o.n, k: o.k, p: o.p }); }); afterFood(before, o.n); break; }
     case "addfood": {
       const n = ($("#fname").value || "").trim(), k = num($("#fk").value), p = num($("#fp").value);
       if (!n || k == null) { toast("Gib mindestens einen Namen und die kcal an."); break; }
@@ -1913,6 +1933,7 @@ document.addEventListener("change", (ev) => {
   if (el.id === "cmpa" || el.id === "cmpb") { S[el.id === "cmpa" ? "cmpA" : "cmpB"] = el.value; render(); return; }
   if (el.id === "scanfile" && el.files && el.files[0]) { scanFromFile(el.files[0]); el.value = ""; return; }
   if (el.id === "importfile" && el.files && el.files[0]) { importFile(el.files[0]); el.value = ""; return; }
+  if (el.id === "dayname") { const pl = planById(S.trainDay), v = el.value.trim().slice(0, 40); if (pl && v) { pl.name = v; S.settings.planChosen = true; saveSettings(); render(); } return; }
   if (el.id && el.id.indexOf("rr-") === 0) { const pl = planById(S.trainDay), e = pl && pl.ex[+el.id.slice(3)]; if (e) { e[2] = el.value; saveSettings(); render(); } return; }
   if (el.dataset && el.dataset.note != null) { const pl = planById(S.trainDay), e = pl && pl.ex[+el.dataset.note]; if (e) { setNote(e[0], el.value.trim()); toast("Einstellung gespeichert."); } return; }
   switch (el.id) {
