@@ -105,7 +105,8 @@ details.edp[open] > summary::after { content: "–"; }
 <div class="wrap">
   <header class="top">
     <div class="brand"><i style="height:22px;background:var(--red)"></i><i style="height:18px;background:var(--blue)"></i><i style="height:14px;background:var(--yellow)"></i>Formbuch <small>Coach</small></div>
-    <label class="btn blue" for="files">Check-ins importieren</label>
+    <label class="btn blue" for="files" id="importbtn" hidden>Check-ins importieren</label>
+    <button class="btn small ghost" id="lockbtn" hidden>Sperren</button>
     <input type="file" id="files" accept="application/json,.json" multiple hidden>
   </header>
   <main id="app"><p class="empty">Lädt …</p></main>
@@ -134,13 +135,84 @@ const DB = {
   p: null,
   open() { return this.p || (this.p = new Promise((res, rej) => { const r = indexedDB.open("formbuch-coach", 1); r.onupgradeneeded = () => r.result.createObjectStore("checkins"); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); })); },
   async tx(mode, fn) { const db = await this.open(); return new Promise((res, rej) => { const t = db.transaction("checkins", mode); const r = fn(t.objectStore("checkins")); t.oncomplete = () => res(r && r.result); t.onerror = () => rej(t.error); }); },
-  put(k, v) { return this.tx("readwrite", (s) => s.put(v, k)); },
+  rawPut(k, v) { return this.tx("readwrite", (s) => s.put(v, k)); },
+  async put(k, v) { return this.rawPut(k, await Lock.enc(v)); },
   del(k) { return this.tx("readwrite", (s) => s.delete(k)); },
-  all() { return this.tx("readonly", (s) => s.getAll()); }
+  rawAll() { return new Promise(async (res, rej) => { const db = await this.open(); const t = db.transaction("checkins", "readonly"), st = t.objectStore("checkins"), out = []; const c = st.openCursor(); c.onsuccess = () => { const cur = c.result; if (cur) { out.push([cur.key, cur.value]); cur.continue(); } else res(out); }; c.onerror = () => rej(c.error); }); },
+  async all() {
+    const rows = await this.rawAll(), out = [];
+    for (const [k, v] of rows) {
+      if (v && v.app) { out.push(v); await this.put(k, v); continue; }
+      try { out.push(await Lock.dec(v)); } catch (e) {}
+    }
+    return out;
+  }
 };
 const S = { list: [], client: null, week: null, cmpA: null, cmpB: null, cmpP: "front", confirmDel: false };
 
-async function load() { try { S.list = (await DB.all()) || []; } catch (e) { S.list = []; toast("Der Speicher in diesem Browser ist blockiert."); } render(); }
+/* lock: password -> PBKDF2 -> AES-GCM key held only in memory; check-ins are stored encrypted */
+const LK = "fbcoach:";
+const b64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const unb64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+const Lock = {
+  key: null,
+  lsGet(k) { try { return localStorage.getItem(LK + k); } catch (e) { return null; } },
+  lsSet(k, v) { try { if (v == null) localStorage.removeItem(LK + k); else localStorage.setItem(LK + k, v); } catch (e) {} },
+  isSetUp() { return !!(this.lsGet("salt") && this.lsGet("check")); },
+  async derive(pw, salt) {
+    const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveKey"]);
+    return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: 250000, hash: "SHA-256" }, base, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+  },
+  async encWith(key, obj) { const iv = crypto.getRandomValues(new Uint8Array(12)); const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(JSON.stringify(obj))); return { iv: b64(iv), ct: b64(ct) }; },
+  async decWith(key, rec) { const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: unb64(rec.iv) }, key, unb64(rec.ct)); return JSON.parse(new TextDecoder().decode(pt)); },
+  enc(obj) { return this.encWith(this.key, obj); },
+  dec(rec) { return this.decWith(this.key, rec); },
+  async setup(pw) {
+    const salt = crypto.getRandomValues(new Uint8Array(16)), key = await this.derive(pw, salt);
+    this.lsSet("salt", b64(salt)); this.lsSet("check", JSON.stringify(await this.encWith(key, { ok: "formbuch" }))); this.key = key;
+  },
+  async unlock(pw) {
+    const key = await this.derive(pw, unb64(this.lsGet("salt")));
+    try { const v = await this.decWith(key, JSON.parse(this.lsGet("check"))); if (v && v.ok === "formbuch") { this.key = key; return true; } } catch (e) {}
+    return false;
+  }
+};
+function lockScreen(mode, msg) {
+  $("#importbtn").hidden = true; $("#lockbtn").hidden = true;
+  const setup = mode === "setup";
+  $("#app").innerHTML = '<div class="panel" style="max-width:420px;margin:30px auto"><h2 style="font-size:34px">' + (setup ? "Passwort festlegen" : "Gesperrt") + '</h2>' +
+    '<p class="sub">' + (setup ? "Die Check-ins deiner Leute werden mit diesem Passwort verschlüsselt auf diesem Gerät gespeichert. Ohne Passwort kann sie niemand lesen. Mindestens 8 Zeichen." : "Gib dein Coach-Passwort ein.") + '</p>' +
+    (msg ? '<p class="chip warn" style="justify-self:start">' + esc(msg) + '</p>' : '') +
+    '<form id="lockform" class="ed" style="gap:10px"><label class="lbl">Passwort<input type="password" id="pw1" autocomplete="' + (setup ? "new-password" : "current-password") + '" required></label>' +
+    (setup ? '<label class="lbl">Passwort wiederholen<input type="password" id="pw2" autocomplete="new-password" required></label>' : '') +
+    '<button class="btn blue" type="submit">' + (setup ? "Speichern und starten" : "Entsperren") + '</button></form>' +
+    (setup ? '<p class="sub" style="font-size:13px">Wichtig: Wenn du das Passwort vergisst, lassen sich die gespeicherten Check-ins nicht wiederherstellen. Die Original-Dateien aus WhatsApp kannst du dann einfach neu importieren.</p>'
+      : '<details class="edp"><summary><span class="sub" style="font-size:13px">Passwort vergessen?</span></summary><div class="confirm" style="margin-top:8px"><span>Alle Coach-Daten auf diesem Gerät löschen und mit neuem Passwort starten? Die Check-in-Dateien kannst du danach neu importieren.</span><button class="btn red small" id="lockreset" type="button" style="justify-self:start">Alles löschen und neu starten</button></div></details>') + '</div>';
+  setTimeout(() => { const i = $("#pw1"); if (i) i.focus(); }, 50);
+}
+document.addEventListener("submit", async (e) => {
+  if (e.target.id !== "lockform") return;
+  e.preventDefault();
+  const pw = $("#pw1").value, pw2 = $("#pw2") ? $("#pw2").value : null, btn = e.target.querySelector("button[type=submit]");
+  if (pw2 != null) {
+    if (pw.length < 8) return lockScreen("setup", "Mindestens 8 Zeichen.");
+    if (pw !== pw2) return lockScreen("setup", "Die Passwörter stimmen nicht überein.");
+    btn.disabled = true; await Lock.setup(pw);
+  } else {
+    btn.disabled = true; btn.textContent = "Prüfe …";
+    if (!(await Lock.unlock(pw))) return lockScreen("unlock", "Falsches Passwort.");
+  }
+  $("#importbtn").hidden = false; $("#lockbtn").hidden = false; load();
+});
+document.addEventListener("click", async (e) => {
+  if (e.target.id === "lockbtn") { Lock.key = null; S.list = []; S.client = null; S.drafts = {}; lockScreen("unlock"); }
+  if (e.target.id === "lockreset") { const db = await DB.open(); await new Promise((r) => { const t = db.transaction("checkins", "readwrite"); t.objectStore("checkins").clear(); t.oncomplete = r; t.onerror = r; }); Lock.lsSet("salt", null); Lock.lsSet("check", null); lockScreen("setup"); }
+});
+let idleT = null;
+function bumpIdle() { clearTimeout(idleT); idleT = setTimeout(() => { if (Lock.key) { Lock.key = null; S.list = []; S.client = null; S.drafts = {}; lockScreen("unlock", "Nach 15 Minuten ohne Aktivität gesperrt."); } }, 15 * 60 * 1000); }
+["click", "keydown", "touchstart"].forEach((ev) => document.addEventListener(ev, bumpIdle, { passive: true }));
+
+async function load() { if (!Lock.key) return lockScreen(Lock.isSetUp() ? "unlock" : "setup"); bumpIdle(); try { S.list = (await DB.all()) || []; } catch (e) { S.list = []; toast("Der Speicher in diesem Browser ist blockiert."); } render(); }
 function clients() {
   const m = {};
   S.list.forEach((c) => { (m[c.client] = m[c.client] || []).push(c); });
@@ -148,6 +220,7 @@ function clients() {
   return m;
 }
 async function importFiles(files) {
+  if (!Lock.key) { toast("Erst entsperren."); return; }
   let ok = 0, bad = 0;
   for (const f of files) {
     try {
@@ -346,7 +419,7 @@ document.addEventListener("change", (e) => {
 document.addEventListener("dragover", (e) => { e.preventDefault(); const d = $("#drop"); if (d) d.classList.add("over"); });
 document.addEventListener("dragleave", () => { const d = $("#drop"); if (d) d.classList.remove("over"); });
 document.addEventListener("drop", (e) => { e.preventDefault(); const d = $("#drop"); if (d) d.classList.remove("over"); if (e.dataTransfer.files.length) importFiles([...e.dataTransfer.files]); });
-load();
+if (!(window.crypto && crypto.subtle)) { $("#app").innerHTML = '<p class="empty">Dieser Browser unterstützt keine Verschlüsselung. Öffne die Coach-Ansicht über https in einem aktuellen Browser.</p>'; } else load();
 if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
   window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
 }

@@ -453,20 +453,30 @@ window.addEventListener("error", function (e) {
 const STANDALONE = true;
 
 /* ---------- Defaults ---------- */
+const PLAN_TEMPLATES = {
+  okuk: { n: "Oberkörper / Unterkörper, 4× pro Woche", plan: [
+    { id: "ok1", name: "Oberkörper A", ex: [["Bankdrücken", 3, "6-10"], ["Rudern breit", 3, "8-12"], ["Schulterdrücken Maschine", 2, "8-12"], ["Latziehen breit", 2, "8-12"], ["Seitheben", 2, "10-15"], ["Bizeps Curls", 2, "10-15"], ["Trizepsdrücken Kabel", 2, "10-15"]] },
+    { id: "uk1", name: "Unterkörper A", ex: [["Kniebeuge", 3, "6-10"], ["Rumänisches Kreuzheben", 3, "8-12"], ["Beinstrecker", 2, "10-15"], ["Beinbeuger", 2, "10-15"], ["Wadenheben", 3, "10-15"], ["Crunches", 2, "10-15"]] },
+    { id: "ok2", name: "Oberkörper B", ex: [["Schrägbankdrücken", 3, "8-12"], ["Latziehen eng", 3, "8-12"], ["Butterfly", 2, "10-15"], ["Rudern eng einarmig", 2, "8-12"], ["Reverse Butterfly", 2, "10-15"], ["Hammer Curls", 2, "10-15"], ["Überkopf-Trizeps Kabel", 2, "10-15"]] },
+    { id: "uk2", name: "Unterkörper B", ex: [["Beinpresse", 3, "8-12"], ["Hip Thrust", 3, "8-12"], ["Beinbeuger", 2, "10-15"], ["Adduktoren Maschine", 2, "10-15"], ["Wadenheben", 3, "10-15"], ["Beinheben", 2, "10-15"]] }] },
+  gk: { n: "Ganzkörper, 3× pro Woche", plan: [
+    { id: "gka", name: "Ganzkörper A", ex: [["Kniebeuge", 3, "6-10"], ["Bankdrücken", 3, "6-10"], ["Rudern breit", 3, "8-12"], ["Seitheben", 2, "10-15"], ["Bizeps Curls", 2, "10-15"]] },
+    { id: "gkb", name: "Ganzkörper B", ex: [["Rumänisches Kreuzheben", 3, "8-12"], ["Schulterdrücken Maschine", 3, "8-12"], ["Latziehen breit", 3, "8-12"], ["Butterfly", 2, "10-15"], ["Trizepsdrücken Kabel", 2, "10-15"]] },
+    { id: "gkc", name: "Ganzkörper C", ex: [["Beinpresse", 3, "8-12"], ["Schrägbankdrücken", 3, "8-12"], ["Rudern eng einarmig", 3, "8-12"], ["Beinbeuger", 2, "10-15"], ["Wadenheben", 2, "10-15"]] }] },
+  ppl: { n: "Push / Pull / Beine, 3× oder 6× pro Woche", plan: [
+    { id: "push", name: "Push", ex: [["Bankdrücken", 3, "6-10"], ["Schrägbankdrücken", 2, "8-12"], ["Schulterdrücken Maschine", 2, "8-12"], ["Seitheben", 3, "10-15"], ["Trizepsdrücken Kabel", 2, "10-15"], ["Überkopf-Trizeps Kabel", 2, "10-15"]] },
+    { id: "pull", name: "Pull", ex: [["Latziehen breit", 3, "8-12"], ["Rudern breit", 3, "8-12"], ["Rudern eng einarmig", 2, "8-12"], ["Reverse Butterfly", 2, "10-15"], ["Bizeps Curls", 2, "10-15"], ["Hammer Curls", 2, "10-15"]] },
+    { id: "legs", name: "Beine", ex: [["Kniebeuge", 3, "6-10"], ["Rumänisches Kreuzheben", 3, "8-12"], ["Beinpresse", 2, "10-15"], ["Beinbeuger", 2, "10-15"], ["Wadenheben", 3, "10-15"], ["Crunches", 2, "10-15"]] }] }
+};
 const DEFAULT_SETTINGS = {
   kind: "settings",
   restSec: 120,
-  gyms: STANDALONE ? [] : ["Comfortzone", "John Reed"],
-  targets: { kcal: 2900, p: 145, f: 80, c: 400, sleep: 8 },
-  body: STANDALONE ? null : { w: 72, h: 179, a: 18, s: "m", d: 4, goal: "lean" },
+  gyms: [],
+  targets: { kcal: 2500, p: 140, f: 70, c: 300, sleep: 8 },
+  body: null,
   profile: { name: "" },
   consent: null,
-  plan: [
-    { id: "upper", name: "Upper", ex: [["Schrägbankdrücken",3],["Latziehen breit",2],["Butterfly",2],["Rudern breit",2],["Brustpresse",2],["Seitheben",2],["Schrägbank-Curls",2],["Trizepsdrücken Kabel",2]] },
-    { id: "lower", name: "Lower", note: "Kniefreundlich: nur Übungen, die schmerzfrei gehen. Im Zweifel mit Arzt oder Physio abklären.", ex: [["Hip Thrust",3],["Rumänisches Kreuzheben",2],["Beinbeuger",2],["Wadenheben",2]] },
-    { id: "chestback", name: "Chest/Back", ex: [["Flachbankdrücken",3],["Latziehen eng",2],["Butterfly",2],["Rudern eng einarmig",2],["Rudern breit",2],["Flys von oben nach unten",2]] },
-    { id: "arms", name: "Arme/Schultern", ex: [["Seitheben Maschine",3],["Schulterdrücken Maschine",2],["Reverse Butterfly",2],["Schrägbank-Curls",2],["Hammer Curls",2],["Überkopf-Trizeps Kabel",2],["Trizepsdrücken Kabel",2]] }
-  ]
+  plan: JSON.parse(JSON.stringify(PLAN_TEMPLATES.okuk.plan))
 };
 const MEALS = [
   { slot: "Frühstück", opts: [
@@ -1125,13 +1135,15 @@ function viewTraining() {
   if (day.rest && !doneN) return '<div class="wohead"><span class="label">' + esc(dayLabel(S.date)) + '</span><h2>Ruhetag</h2><p class="sub">Heute keine Sätze. Wähl einen Trainingstag, falls du doch trainierst.</p></div>' + chipsHtml + '<div class="panel prose"><h3>Erholung richtig nutzen</h3><p><b>Eiweißziel trotzdem schaffen.</b> Die Muskeln bauen heute auf, nicht im Gym.</p><p><b>Locker bewegen:</b> Spazieren gehen oder entspannt Rad fahren hilft der Erholung und schont das Knie.</p><p><b>Früh schlafen:</b> Schlaf ist der beste Muskelaufbau-Booster, den es gibt.</p></div>';
   let h = '<div class="wohead"><span class="label">' + esc(dayLabel(S.date)) + '</span><h2>' + esc(plan.name) + '</h2><div class="progress"><i style="width:' + (totalN ? doneN / totalN * 100 : 0) + '%"></i></div><div class="row spread"><span class="sub num">' + doneN + ' / ' + totalN + ' Sätze</span><span class="sub">Pause: <b class="num">' + fmtTime(S.settings.restSec || 120) + '</b> <button class="btn small ghost" data-action="restcycle" aria-label="Pausenzeit ändern">ändern</button></span></div></div>';
   h += chipsHtml + gymChips();
+  if (STANDALONE && !S.settings.planChosen && !S.editPlan) h += '<div class="hint"><b>Das ist ein Beispielplan.</b> Wähl eine Vorlage, die zu dir passt, oder pass die Übungen an. Wenn du einen Coach hast, bekommst du deinen Plan von ihm. <div class="row" style="margin-top:8px"><button class="btn small blue" data-action="editplan">Vorlage wählen</button><button class="btn small ghost" data-action="planok">Passt so</button></div></div>';
   if (plan.note) h += '<p class="note">' + esc(plan.note) + '</p>';
 
   if (S.editPlan) {
     h += '<div class="panel"><div class="row spread"><h3>' + esc(plan.name) + ' bearbeiten</h3><button class="btn small blue" data-action="editdone">Fertig</button></div><div>';
     plan.ex.forEach((e, i) => { h += '<div class="edit-ex2"><span>' + esc(e[0]) + '</span><div class="row" style="gap:6px"><span class="stepper"><button data-action="setsminus" data-i="' + i + '" aria-label="Weniger Sätze">−</button><span class="num">' + e[1] + ' Sätze</span><button data-action="setsplus" data-i="' + i + '" aria-label="Mehr Sätze">+</button></span><select id="rr-' + i + '" aria-label="Wiederholungsbereich ' + esc(e[0]) + '">' + RANGES.map((r) => '<option value="' + r + '"' + (r === rangeStr(e) ? ' selected' : '') + '>' + r.replace('-', '–') + ' Wdh.</option>').join('') + '</select><button class="iconbtn" data-action="exdel" data-i="' + i + '" aria-label="' + esc(e[0]) + ' entfernen" style="margin-left:auto">✕</button></div></div>'; });
     h += '</div><div class="row" style="flex-wrap:nowrap;align-items:end"><div class="field" style="flex:1"><label class="label" for="newex">Neue Übung</label><input id="newex" placeholder="z. B. Klimmzüge"></div><button class="btn" data-action="exadd">Hinzufügen</button></div>';
-    h += '<button class="btn ghost small" data-action="resetplan" style="justify-self:start">Auf Standard zurücksetzen</button></div>';
+    h += '<div class="row" style="flex-wrap:nowrap;align-items:end"><div class="field" style="flex:1"><label class="label" for="tplsel">Ganzen Plan durch Vorlage ersetzen</label><select id="tplsel">' + Object.keys(PLAN_TEMPLATES).map((k) => '<option value="' + k + '">' + esc(PLAN_TEMPLATES[k].n) + '</option>').join("") + '</select></div><button class="btn" data-action="tplload">Laden</button></div>';
+    h += '<button class="btn ghost small" data-action="resetplan" style="justify-self:start">Diesen Tag auf Standard zurücksetzen</button></div>';
     return h;
   }
   plan.ex.forEach((e, ei) => {
@@ -1300,29 +1312,49 @@ async function scanFromFile(file) {
     const code = await sc.scanFile(file, false); holder.remove(); lookupFood(code);
   } catch (e) { const h = $("#scanfilebox"); if (h) h.remove(); msg("Auf dem Foto wurde kein Strichcode gefunden. Versuch es näher und schärfer oder tipp die Nummer ein."); }
 }
+async function offFetch(code) {
+  const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    const r = await fetch("https://world.openfoodfacts.org/api/v2/product/" + code + ".json?fields=code,product_name,product_name_de,generic_name_de,brands,nutriments,serving_quantity", { signal: ctrl.signal });
+    return await r.json();
+  } finally { clearTimeout(timer); }
+}
+function offParse(p) {
+  const n = (p && p.nutriments) || {}, sq = Number(p && p.serving_quantity);
+  let kcal = Number(n["energy-kcal_100g"]);
+  if (!(kcal >= 0) && Number(n.energy_100g) > 0) kcal = Number(n.energy_100g) / 4.184;
+  if (!(kcal >= 0) && sq > 0 && Number(n["energy-kcal_serving"]) >= 0) kcal = Number(n["energy-kcal_serving"]) / sq * 100;
+  let prot = Number(n.proteins_100g);
+  if (!(prot >= 0) && sq > 0 && Number(n.proteins_serving) >= 0) prot = Number(n.proteins_serving) / sq * 100;
+  const name = p && (p.product_name_de || p.product_name || p.generic_name_de);
+  return { kcal, prot, name: name ? String(name).trim() : "", sq };
+}
 async function lookupFood(raw) {
   const code = String(raw || "").replace(/\D/g, "");
   if (code.length < 8) { toast("Das ist keine gültige Barcode-Nummer."); return; }
-  const known = foods().find((f) => f.code === code);
+  const variants = [code]; if (code.length === 12) variants.push("0" + code); if (code.length === 13 && code[0] === "0") variants.push(code.slice(1));
+  const known = foods().find((f) => variants.includes(f.code));
   if (known) { amountSheet(known); return; }
   if (navigator.onLine === false) { foodForm({ code }, "Du bist offline. Trag die Werte von der Packung ein, dann ist das Produkt fürs nächste Mal gespeichert."); return; }
   openSheet('<span class="label">Barcode ' + esc(code) + '</span><h2 style="font-size:32px">Suche …</h2><p class="sub">Frage Open Food Facts nach dem Produkt.</p>');
-  try {
-    const ctrl = new AbortController(), timer = setTimeout(() => ctrl.abort(), 9000);
-    const r = await fetch("https://world.openfoodfacts.org/api/v2/product/" + code + ".json?fields=product_name,product_name_de,generic_name_de,brands,nutriments,serving_quantity", { signal: ctrl.signal });
-    clearTimeout(timer);
-    const d = await r.json();
-    const p = d && d.status === 1 && d.product;
-    const n = p && p.nutriments || {};
-    let kcal = Number(n["energy-kcal_100g"]); if (!(kcal >= 0) && Number(n.energy_100g) > 0) kcal = Number(n.energy_100g) / 4.184;
-    const prot = Number(n.proteins_100g);
-    const name = p && (p.product_name_de || p.product_name || p.generic_name_de);
-    if (!p || !name || !(kcal >= 0) || !(prot >= 0)) { foodForm({ code, name: name || "" }, p ? "Das Produkt ist in der Datenbank, aber ohne vollständige Nährwerte. Ergänze sie von der Packung." : "Das Produkt ist noch nicht in Open Food Facts. Trag die Werte von der Packung ein, dann ist es fürs nächste Mal gespeichert."); return; }
-    const f = { id: "f" + rid(), code, name: String(name).trim().slice(0, 60), brand: p.brands ? String(p.brands).split(",")[0].trim().slice(0, 40) : "", kcal100: Math.round(kcal), p100: Math.round(prot * 10) / 10, serving: Number(p.serving_quantity) > 0 ? Math.round(Number(p.serving_quantity)) : null, src: "off", ts: Date.now() };
-    saveFood(f); amountSheet(f);
-  } catch (e) {
-    foodForm({ code }, "Die Datenbank war gerade nicht erreichbar. Trag die Werte von der Packung ein oder versuch es später nochmal.");
+  let p = null, failed = false;
+  for (const v of variants) {
+    let d = null;
+    try { d = await offFetch(v); } catch (e) { try { d = await offFetch(v); } catch (e2) { failed = true; } }
+    if (d && d.status === 1 && d.product) { p = d.product; break; }
   }
+  if (!p) {
+    foodForm({ code }, failed ? "Open Food Facts war gerade nicht erreichbar (Barcode " + code + "). Trag die Werte von der Packung ein oder versuch es später nochmal."
+      : "Barcode " + code + " ist noch nicht in Open Food Facts. Prüf kurz, ob die Nummer mit der auf der Packung übereinstimmt. Wenn ja, trag die Werte ein, dann ist das Produkt fürs nächste Mal gespeichert.");
+    return;
+  }
+  const v = offParse(p);
+  if (!v.name || !(v.kcal >= 0) || !(v.prot >= 0)) {
+    foodForm({ code, name: v.name, kcal100: v.kcal >= 0 ? Math.round(v.kcal) : null, p100: v.prot >= 0 ? Math.round(v.prot * 10) / 10 : null, serving: v.sq > 0 ? Math.round(v.sq) : null }, "Das Produkt ist in der Datenbank, aber unvollständig. Ergänze die fehlenden Werte von der Packung.");
+    return;
+  }
+  const f = { id: "f" + rid(), code, name: v.name.slice(0, 60), brand: p.brands ? String(p.brands).split(",")[0].trim().slice(0, 40) : "", kcal100: Math.round(v.kcal), p100: Math.round(v.prot * 10) / 10, serving: v.sq > 0 ? Math.round(v.sq) : null, src: "off", ts: Date.now() };
+  saveFood(f); amountSheet(f);
 }
 function addFoodEntry() {
   const f = S.curFood, g = num(($("#fgram") || {}).value);
@@ -1375,7 +1407,7 @@ function previewPlan(d) {
       (t ? '<p class="sub">Ziele: <b style="color:var(--ink)">' + fmt(t.kcal) + ' kcal, ' + fmt(t.p) + ' g Eiweiß</b>' + (d.goal && GOALS[d.goal] ? ' · ' + GOALS[d.goal].n : '') + '</p>' : '') +
       '<div style="display:grid;gap:8px;max-height:42vh;overflow:auto">' + days + '</div><p class="sub" style="font-size:13px">Deine bisherigen Einträge bleiben erhalten.</p>',
     yes: () => {
-      if (plan) S.settings.plan = plan;
+      if (plan) { S.settings.plan = plan; S.settings.planChosen = true; }
       if (t) { const nt = {}; ["kcal", "p", "f", "c", "sleep"].forEach((k) => { const v = Number(t[k]); if (v > 0 && v < 10000) nt[k] = v; }); S.settings.targets = Object.assign({}, S.settings.targets, nt); }
       if (d.goal && GOALS[d.goal] && S.settings.body) S.settings.body = Object.assign({}, S.settings.body, { goal: d.goal });
       S.trainDay = null; saveSettings(); render(); toast("Neuer Plan übernommen.", true);
@@ -1420,7 +1452,7 @@ function planDetails() {
   const G = goalOf(), gk = goalKey();
   if (bd) intro = 'Berechnet für ' + fkg(bd.w) + ' kg, ' + bd.h + ' cm, ' + bd.a + ' Jahre und ' + bd.d + ' Trainingstage pro Woche: Dein Verbrauch liegt bei etwa ' + fmt(Math.round((t.kcal - G.kcal) / 50) * 50) + ' kcal. Ziel <b>' + G.n + '</b>: ' + (G.kcal > 0 ? 'rund ' + G.kcal + ' kcal Überschuss' : 'rund ' + (-G.kcal) + ' kcal Defizit') + ' pro Tag' + (gk === "cut" ? ', dazu viel Eiweiß, damit die Muskeln bleiben.' : '.');
   else if (STANDALONE) intro = 'Trag unter Verlauf bei den Zielen deine Körperdaten ein, dann passt die App Kalorien und Eiweiß an dich an.';
-  else intro = 'Berechnet für 72 kg, 179 cm, 18 Jahre, Bürojob und 4 Trainingstage: Dein Verbrauch liegt bei etwa 2.650 kcal. Mit rund 250 kcal Überschuss baust du Muskeln auf, ohne viel Fett anzusetzen.';
+  else intro = 'Trag unter Verlauf bei den Zielen deine Körperdaten ein, dann passt die App Kalorien und Eiweiß an dich an.';
   const scale = t.kcal / 2875;
   const scaleTxt = Math.abs(scale - 1) > 0.07 ? '<p><b>Portionen anpassen:</b> Die Mengen unten sind für etwa 2.900 kcal gedacht. Für dein Ziel nimm ungefähr ' + Math.round(scale * 100) + ' % davon.</p>' : '';
   h += '<div class="prose"><p>' + intro + '</p><p><b>So geht der Tag auf:</b> 3 Mahlzeiten mit je etwa einem Drittel deiner Kalorien und dazu ein Shake oder Skyr. Pro Mahlzeit eine Option aussuchen, tauschen ist erlaubt.</p>' + scaleTxt + '</div>';
@@ -1814,7 +1846,13 @@ document.addEventListener("click", (ev) => {
     case "setsplus": { const e = plan.ex[+b.dataset.i]; if (e[1] < 8) { e[1]++; saveSettings(); render(); } break; }
     case "exdel": plan.ex.splice(+b.dataset.i, 1); saveSettings(); render(); break;
     case "exadd": { const v = ($("#newex").value || "").trim(); if (v) { if (plan.ex.some((e) => e[0] === v)) { toast("Diese Übung ist schon im Plan."); break; } plan.ex.push([v.slice(0, 60), 2]); saveSettings(); render(); } break; }
-    case "resetplan": { const def = DEFAULT_SETTINGS.plan.find((p) => p.id === plan.id); if (def) { plan.ex = clone(def.ex); saveSettings(); render(); toast("Plan zurückgesetzt."); } break; }
+    case "resetplan": { const all = [DEFAULT_SETTINGS.plan].concat(Object.values(PLAN_TEMPLATES).map((t) => t.plan)); let def = null; all.forEach((pl) => { if (!def) def = pl.find((p) => p.id === plan.id); }); if (def) { plan.ex = clone(def.ex); saveSettings(); render(); toast("Tag zurückgesetzt."); } else toast("Für diesen Tag gibt es keinen Standard."); break; }
+    case "planok": S.settings.planChosen = true; saveSettings(); render(); break;
+    case "tplload": { const k = ($("#tplsel") || {}).value, t = PLAN_TEMPLATES[k]; if (!t) break;
+      askConfirm({ kicker: "Plan-Vorlage", title: t.n, yesLabel: "Plan ersetzen", noLabel: "Abbrechen",
+        body: '<div style="display:grid;gap:8px;max-height:42vh;overflow:auto">' + t.plan.map((p) => '<div class="opt"><b>' + esc(p.name) + '</b><span class="sub" style="font-size:13px">' + p.ex.map((e) => esc(e[0]) + " " + e[1] + "×" + e[2]).join(", ") + '</span></div>').join("") + '</div><p class="sub" style="font-size:13px">Dein bisheriger Plan wird ersetzt. Alle Einträge und Bestleistungen bleiben erhalten.</p>',
+        yes: () => { S.settings.plan = clone(t.plan); S.settings.planChosen = true; S.trainDay = null; S.editPlan = false; saveSettings(); render(); toast("Vorlage geladen.", true); } });
+      break; }
     case "addmeal": { const o = MEALS[+b.dataset.m].opts[+b.dataset.o]; if ((getDay(S.date).food || []).length < 4) xpFloat(b.getBoundingClientRect(), "+5 XP"); const before = foodTotals(getDay(S.date)).p; mutateDay(S.date, (d) => { d.food = d.food || []; d.food.push({ id: rid(), n: o.n, k: o.k, p: o.p }); }); afterFood(before, o.n); break; }
     case "addfood": {
       const n = ($("#fname").value || "").trim(), k = num($("#fk").value), p = num($("#fp").value);
