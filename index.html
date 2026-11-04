@@ -1985,6 +1985,7 @@ function hideSplash() {
   try {
     const { settings, days, checkins } = await Store.load();
     if (settings && settings.plan && settings.targets) S.settings = Object.assign(clone(DEFAULT_SETTINGS), settings);
+    if (Array.isArray(S.settings.plan) && S.settings.plan.some((p) => p && /^Kniefreundlich: nur/.test(p.note || ""))) { S.settings.plan.forEach((p) => { if (p && /^Kniefreundlich: nur/.test(p.note || "")) delete p.note; }); saveSettings(); }
     S.days = days || {}; S.checkins = checkins || {};
     applyTheme();
   } catch (e) {

@@ -1,5 +1,5 @@
 /* Formbuch offline cache: serves the app from the phone, refreshes it in the background when online. */
-const CACHE = "formbuch-v11";
+const CACHE = "formbuch-v12";
 const CORE = ["./", "index.html", "coach.html", "manifest.webmanifest", "icon-180.png", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", (e) => {
